@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractor de Cámaras Mediadata</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100">
+
+    <!-- Header Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-brand-600/20 text-brand-400 rounded-lg border border-brand-500/30">
+                    <i class="fa-solid fa-camera-rotate text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-none text-slate-100">Extractor de Cámaras Mediadata</h1>
+                    <span class="text-xs text-slate-400">Escáner de subcarpetas en Client Files / Data / Mediadata</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <span>Procesamiento 100% Local</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+
+        <!-- Top Section: Folder Selector & Summary Cards -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Upload Box -->
+            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden group hover:border-brand-500/40 transition-all duration-300">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-brand-600/10 rounded-full blur-2xl group-hover:bg-brand-600/20 transition-all"></div>
+                
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-brand-400"></i> Seleccionar Carpeta Raíz
+                        </h2>
+                        <span class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-md border border-slate-700">Exploración profunda</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+                        Busca en cualquier nivel la secuencia:
+                        <code class="bg-slate-950 px-2 py-0.5 rounded text-brand-300 font-mono text-[11px] border border-slate-800">
+                            .../Client Files/Data/Mediadata/[Nombre o ID Cámara]/...
+                        </code>
+                    </p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <label for="folderInput" class="w-full sm:w-auto cursor-pointer flex-1 flex items-center justify-center gap-3 bg-brand-600 hover:bg-brand-500 text-white font-medium px-6 py-3.5 rounded-lg shadow-lg shadow-brand-600/20 transition-all duration-200 active:scale-98">
+                        <i class="fa-solid fa-folder-tree text-lg"></i>
+                        <span>Cargar Carpeta Raíz</span>
+                        <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden" />
+                    </label>
+
+                    <div id="statusBadge" class="text-xs text-slate-400 flex items-center gap-2 px-3 py-2 bg-slate-950 rounded-lg border border-slate-800 w-full sm:w-auto justify-center">
+                        <i class="fa-solid fa-circle-info text-slate-500"></i>
+                        <span>Esperando selección...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary / Counters -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl flex flex-col justify-between">
+                <h2 class="text-lg font-semibold text-slate-200 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-brand-400"></i> Resumen
+                </h2>
+                
+                <div class="grid grid-cols-2 gap-3 mb-2">
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <span class="text-xs text-slate-400 block mb-1">Archivos Leídos</span>
+                        <span id="statFiles" class="text-xl font-bold text-slate-100 font-mono">0</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <span class="text-xs text-slate-400 block mb-1">Cámaras Encontradas</span>
+                        <span id="statCameras" class="text-xl font-bold text-brand-400 font-mono">0</span>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 col-span-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-400">Grupos de Carpetas ([Carpeta 02])</span>
+                            <i class="fa-solid fa-layer-group text-brand-400 text-xs"></i>
+                        </div>
+                        <span id="statGroups" class="text-2xl font-bold text-slate-100 font-mono block mt-1">0</span>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-500 text-right italic" id="statusDetailText">
+                    Ningún directorio cargado aún
+                </div>
+            </div>
+        </div>
+
+        <!-- Textarea / Editor Panel -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-xl flex flex-col overflow-hidden">
+            
+            <!-- Editor Header Toolbar -->
+            <div class="bg-slate-800/80 px-4 py-3 border-b border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-file-code text-brand-400"></i>
+                    <span class="font-semibold text-sm text-slate-200">Resultado Generado (.txt)</span>
+                    <span class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Auto-Mayúsculas</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button id="btnCopy" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-medium px-3.5 py-2 rounded-lg border border-slate-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa-regular fa-copy"></i>
+                        <span>Copiar al Portapapeles</span>
+                    </button>
+                    
+                    <button id="btnDownload" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg shadow-md shadow-brand-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa-solid fa-download"></i>
+                        <span>Descargar .txt</span>
+                    </button>
+                    
+                    <button id="btnClear" class="flex items-center gap-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 text-xs font-medium px-3.5 py-2 rounded-lg border border-rose-500/30 transition-all active:scale-95">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Limpiar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editable Text Area -->
+            <div class="relative flex-1 p-2 bg-slate-950">
+                <textarea id="outputArea" 
+                    placeholder="El formato en Mayúsculas aparecerá aquí. Ejemplo:
+[CARPETA 02]
+-CAMARA_01,CAMARA_02
+-CAMARA_03,CAMARA_04"
+                    class="w-full h-80 bg-slate-950 text-slate-100 font-mono text-sm p-4 outline-none border-0 resize-none focus:ring-0 leading-relaxed uppercase placeholder:normal-case placeholder:text-slate-600"
+                    spellcheck="false"></textarea>
+            </div>
+
+            <!-- Toast / Notification Bar -->
+            <div id="notificationBar" class="hidden bg-emerald-950/90 border-t border-emerald-800/50 px-4 py-2.5 text-xs text-emerald-200 flex items-center justify-between">
+                <span id="notificationMessage" class="flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Copiado exitosamente</span>
+                </span>
+                <button onclick="hideNotification()" class="text-emerald-400 hover:text-emerald-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Debug and Diagnostic Section -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl flex flex-col gap-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="text-md font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-bug text-brand-400"></i> Panel de Diagnóstico y Rutas Escaneadas
+                </h3>
+                <span id="debugCount" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded border border-slate-700">0 rutas inspeccionadas</span>
+            </div>
+
+            <p class="text-xs text-slate-400">
+                Si no aparece ningún resultado en el área de texto, revisa aquí las rutas que leyó el navegador para asegurarte de que coincidan con la carpeta cargada.
+            </p>
+
+            <div id="debugLog" class="bg-slate-950 border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-300 max-h-64 overflow-y-auto flex flex-col gap-1.5">
+                <span class="text-slate-600 italic">Selecciona una carpeta arriba para inspeccionar sus rutas...</span>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom JavaScript Application -->
+    <script>
+        const folderInput = document.getElementById('folderInput');
+        const outputArea = document.getElementById('outputArea');
+        const statusBadge = document.getElementById('statusBadge');
+        const btnCopy = document.getElementById('btnCopy');
+        const btnDownload = document.getElementById('btnDownload');
+        const btnClear = document.getElementById('btnClear');
+        
+        const statFiles = document.getElementById('statFiles');
+        const statCameras = document.getElementById('statCameras');
+        const statGroups = document.getElementById('statGroups');
+        const statusDetailText = document.getElementById('statusDetailText');
+        
+        const notificationBar = document.getElementById('notificationBar');
+        const notificationMessage = document.getElementById('notificationMessage');
+        const debugLog = document.getElementById('debugLog');
+        const debugCount = document.getElementById('debugCount');
+
+        // Force Uppercase on direct user typing/pasting
+        outputArea.addEventListener('input', () => {
+            const start = outputArea.selectionStart;
+            const end = outputArea.selectionEnd;
+            outputArea.value = outputArea.value.toUpperCase();
+            outputArea.setSelectionRange(start, end);
+            updateButtonsState();
+        });
+
+        // Folder Upload Change Event
+        folderInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+            processDirectoryFiles(files);
+        });
+
+        // Main Folder Parser
+        function processDirectoryFiles(files) {
+            statusBadge.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-brand-400"></i> Escaneando ${files.length} archivos...`;
+            
+            // Map Structure: Carpeta02 -> Map(Carpeta03 -> Set(Cámaras))
+            const dataMap = new Map();
+            const debugList = [];
+            const cameraFoundSet = new Set();
+
+            let matchesFound = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                // Obtain relative path provided by webkitRelativePath
+                const rawPath = file.webkitRelativePath || file.name || '';
+                
+                if (!rawPath) continue;
+
+                // Split path into individual directory parts, handling both Windows (\) and Unix (/)
+                const parts = rawPath.replace(/\\/g, '/').split('/').filter(p => p.trim() !== '');
+
+                // Search for the sequence "Client Files" -> "Data" -> "Mediadata"
+                let mediadataIdx = -1;
+                for (let k = 0; k < parts.length - 2; k++) {
+                    const current = parts[k].toLowerCase();
+                    const next1 = parts[k + 1].toLowerCase();
+                    const next2 = parts[k + 2].toLowerCase();
+
+                    if (current === 'client files' && next1 === 'data' && next2 === 'mediadata') {
+                        mediadataIdx = k + 2; // Index of 'Mediadata'
+                        break;
+                    }
+                }
+
+                if (mediadataIdx !== -1) {
+                    const clientFilesIdx = mediadataIdx - 2;
+
+                    // 1. Camera Name = Folder IMMEDIATELY after 'Mediadata'
+                    const cameraIdx = mediadataIdx + 1;
+                    if (cameraIdx < parts.length) {
+                        const cameraName = parts[cameraIdx].trim();
+
+                        // 2. Carpeta 03 = Folder IMMEDIATELY BEFORE 'Client Files'
+                        const folder03 = clientFilesIdx >= 1 ? parts[clientFilesIdx - 1].trim() : 'GENERAL';
+
+                        // 3. Carpeta 02 = Folder BEFORE Carpeta 03
+                        const folder02 = clientFilesIdx >= 2 ? parts[clientFilesIdx - 2].trim() : (clientFilesIdx === 1 ? parts[0].trim() : 'CARPETA_RAIZ');
+
+                        if (cameraName) {
+                            matchesFound++;
+                            cameraFoundSet.add(cameraName);
+
+                            if (!dataMap.has(folder02)) {
+                                dataMap.set(folder02, new Map());
+                            }
+
+                            const folder03Map = dataMap.get(folder02);
+                            if (!folder03Map.has(folder03)) {
+                                folder03Map.set(folder03, new Set());
+                            }
+
+                            folder03Map.get(folder03).add(cameraName);
+
+                            if (debugList.length < 150) {
+                                debugList.push({
+                                    status: 'ok',
+                                    text: `<span class="text-emerald-400 font-semibold">[Detección Correcta]</span> ${rawPath}<br>&nbsp;&nbsp;&nbsp;&nbsp;&bull; <b class="text-slate-200">Carpeta 02:</b> ${folder02} | <b class="text-slate-200">Carpeta 03:</b> ${folder03} | <b class="text-slate-200">Cámara:</b> ${cameraName}`
+                                });
+                            }
+                        }
+                    } else {
+                        if (debugList.length < 150) {
+                            debugList.push({
+                                status: 'warning',
+                                text: `<span class="text-amber-400 font-semibold">[Incompleta]</span> ${rawPath} (Llegó a Mediadata pero no tiene subcarpeta de cámara)`
+                            });
+                        }
+                    }
+                } else {
+                    // Log first few unmatched paths so the user can inspect what was scanned
+                    if (debugList.length < 30) {
+                        debugList.push({
+                            status: 'skip',
+                            text: `<span class="text-slate-500">[Sin coincidencia]</span> ${rawPath}`
+                        });
+                    }
+                }
+            }
+
+            // Build output text format:
+            // [CARPETA 02]
+            // -CAMARA01,CAMARA02
+            // -CAMARA03,CAMARA04
+            let resultText = '';
+            const sortedFolder02 = Array.from(dataMap.keys()).sort();
+
+            sortedFolder02.forEach((f02, idx02) => {
+                resultText += `[${f02}]\n`;
+
+                const folder03Map = dataMap.get(f02);
+                const sortedFolder03 = Array.from(folder03Map.keys()).sort();
+
+                sortedFolder03.forEach((f03) => {
+                    const cameras = Array.from(folder03Map.get(f03)).sort();
+                    if (cameras.length > 0) {
+                        resultText += `-${cameras.join(',')}\n`;
+                    }
+                });
+
+                if (idx02 < sortedFolder02.length - 1) {
+                    resultText += '\n';
+                }
+            });
+
+            // Put uppercase result into editable text area
+            outputArea.value = resultText.toUpperCase();
+
+            // Update stats UI
+            statFiles.textContent = files.length;
+            statCameras.textContent = cameraFoundSet.size;
+            statGroups.textContent = dataMap.size;
+            statusDetailText.textContent = `${matchesFound} rutas asociadas a cámaras`;
+
+            // Update debug panel UI
+            debugCount.textContent = `${matchesFound} coincidencias en ${files.length} archivos escaneados`;
+            if (debugList.length > 0) {
+                debugLog.innerHTML = debugList.map(item => item.text).join('<br>');
+            } else {
+                debugLog.innerHTML = `<span class="text-amber-400">No se detectaron archivos en la carpeta seleccionada.</span>`;
+            }
+
+            if (dataMap.size > 0) {
+                statusBadge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> ${cameraFoundSet.size} cámaras agrupadas`;
+                showNotification(`Se generó la lista con ${cameraFoundSet.size} cámaras encontradas.`);
+            } else {
+                statusBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Sin coincidencias`;
+                showNotification(`No se encontraron carpetas con la ruta ".../Client Files/Data/Mediadata/..."`, true);
+            }
+
+            updateButtonsState();
+        }
+
+        // Enable/Disable Action Buttons
+        function updateButtonsState() {
+            const hasContent = outputArea.value.trim().length > 0;
+            btnCopy.disabled = !hasContent;
+            btnDownload.disabled = !hasContent;
+        }
+
+        // Copy Text to Clipboard
+        btnCopy.addEventListener('click', () => {
+            if (!outputArea.value) return;
+
+            outputArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showNotification('Lista copiada al portapapeles en Mayúsculas.');
+                } else {
+                    showNotification('Error al copiar el texto.', true);
+                }
+            } catch (err) {
+                showNotification('No se pudo copiar al portapapeles.', true);
+            }
+        });
+
+        // Download Text File
+        btnDownload.addEventListener('click', () => {
+            const content = outputArea.value;
+            if (!content) return;
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            a.href = url;
+            a.download = `Lista_Mediadata_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Archivo .txt descargado exitosamente.');
+        });
+
+        // Clear Text Area & Stats
+        btnClear.addEventListener('click', () => {
+            outputArea.value = '';
+            folderInput.value = '';
+            statFiles.textContent = '0';
+            statCameras.textContent = '0';
+            statGroups.textContent = '0';
+            statusDetailText.textContent = 'Ningún directorio cargado aún';
+            debugCount.textContent = '0 rutas inspeccionadas';
+            debugLog.innerHTML = `<span class="text-slate-600 italic">Selecciona una carpeta arriba para inspeccionar sus rutas...</span>`;
+            statusBadge.innerHTML = `<i class="fa-solid fa-circle-info text-slate-500"></i> Esperando selección...`;
+            updateButtonsState();
+            hideNotification();
+        });
+
+        // Notification Toast Helper
+        function showNotification(msg, isError = false) {
+            notificationMessage.innerHTML = isError 
+                ? `<i class="fa-solid fa-circle-exclamation text-rose-400"></i> <span>${msg}</span>`
+                : `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>${msg}</span>`;
+            
+            if (isError) {
+                notificationBar.className = "bg-rose-950/90 border-t border-rose-800/50 px-4 py-2.5 text-xs text-rose-200 flex items-center justify-between";
+            } else {
+                notificationBar.className = "bg-emerald-950/90 border-t border-emerald-800/50 px-4 py-2.5 text-xs text-emerald-200 flex items-center justify-between";
+            }
+            
+            notificationBar.classList.remove('hidden');
+
+            setTimeout(() => {
+                hideNotification();
+            }, 5000);
+        }
+
+        function hideNotification() {
+            notificationBar.classList.add('hidden');
+        }
+
+        updateButtonsState();
+    </script>
+</body>
+</html>
