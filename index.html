@@ -3,96 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extractor de Archivos .scp con Excepciones</title>
+    <title>Extractor y Agrupador de .scp</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f4f9; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; margin-bottom: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 850px; margin: auto; margin-bottom: 20px; }
         input, button { margin: 10px 0; padding: 10px; width: 100%; box-sizing: border-box; }
         button { background-color: #007BFF; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background-color: #0056b3; }
+        .btn-warning { background-color: #ffc107; color: #212529; }
+        .btn-warning:hover { background-color: #e0a800; }
         .btn-success { background-color: #28a745; }
         .btn-success:hover { background-color: #218838; }
-        pre { background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; max-height: 350px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; }
+        pre { background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 4px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Extractor de .scp (Con Excepciones)</h2>
+    <h2>Extractor y Agrupador de Archivos .scp</h2>
     
-    <label for="folderInput">**1. Selecciona la carpeta principal:**</label>
+    <label for="folderInput">**1. Selecciona la carpeta Rxxxx:**</label>
     <input type="file" id="folderInput" webkitdirectory directory multiple>
 
-    <button onclick="processFolder()">Buscar y Procesar Archivos</button>
+    <button onclick="processFolder()">Procesar y Agrupar</button>
 </div>
 
 <div class="container">
-    <h3>Resultado Formateado:</h3>
+    <h3>Resultado Agrupado:</h3>
     <pre id="output">Los resultados aparecerán aquí...</pre>
     
+    <!-- Nuevos botones de edición y descarga -->
+    <button class="btn-warning" onclick="toggleCase()">Alternar MAYÚSCULAS / Minúsculas</button>
     <button class="btn-success" onclick="downloadResults()">Descargar Resultados en TXT</button>
 </div>
 
 <script>
-    let lastResults = '';
+    let lastResults = '';        // Almacena el texto procesado actual
+    let originalResults = '';    // Guarda el texto original para poder revertir el cambio de mayúsculas
+    let isUpperCase = false;     // Estado actual de las mayúsculas
 
     async function processFolder() {
         const folderInput = document.getElementById('folderInput');
         const outputPre = document.getElementById('output');
         
         outputPre.textContent = '';
+        isUpperCase = false;
 
         if (folderInput.files.length === 0) {
             alert('Por favor, selecciona una carpeta.');
             return;
         }
 
-        let results = '';
-        const regex = /<Name>([\s\S]*?)<\/Name>/gi;
+        const groups = {};
         let matchedFilesCount = 0;
 
         for (const file of folderInput.files) {
-            const pathParts = file.webkitRelativePath.split('/');
-            const lowerPath = file.webkitRelativePath.toLowerCase();
+            const relativePath = file.webkitRelativePath;
+            const lowerPath = relativePath.toLowerCase();
+            const parts = relativePath.split('/');
             
-            // Verificaciones
-            const isInClientFiles = pathParts.some(part => part.toLowerCase() === 'client files');
+            const cfIndex = parts.findIndex(p => p.toLowerCase() === 'client files');
+            const isInClientFiles = cfIndex !== -1;
             const isScp = file.name.toLowerCase().endsWith('.scp');
-            
-            // Excepciones: comprueba si la ruta contiene alguna de las dos exclusiones
-            const hasGrabaciones = lowerPath.includes('grabaciones exportadas');
-            const hasCameras = lowerPath.includes('-cameras-');
 
-            // Solo procesa si está en "Client Files", es .scp y NO contiene ninguna de las excepciones
-            if (isInClientFiles && isScp && !hasGrabaciones && !hasCameras) {
+            if (isInClientFiles && isScp) {
                 matchedFilesCount++;
+                
+                let secondFolder = 'Carpeta Desconocida';
+                if (cfIndex >= 2) {
+                    secondFolder = parts[cfIndex - 2];
+                }
+
                 try {
                     const text = await file.text();
                     let names = [];
                     let match;
 
+                    const regex = /<Name>([\s\S]*?)<\/Name>/gi;
                     while ((match = regex.exec(text)) !== null) {
-                        const cleanName = match[1].trim();
+                        let cleanName = match[1].trim();
+                        
+                        // Borrar automáticamente "Grabaciones Exportadas" y "-Cameras-" (insensible a mayúsculas/minúsculas)
+                        cleanName = cleanName
+                            .replace(/grabaciones exportadas/gi, '')
+                            .replace(/-cameras-/gi, '')
+                            .trim();
+
                         if (cleanName) {
                             names.push(cleanName);
                         }
                     }
 
-                    const formattedNames = names.length > 0 ? names.join(', ') : '(Sin etiquetas <Name> encontradas)';
-                    results += `- ${file.webkitRelativePath}: ${formattedNames}\n`;
+                    const formattedNames = names.length > 0 ? names.join(', ') : '(Sin etiquetas válidas)';
+                    const line = `- ${formattedNames}`;
+
+                    if (!groups[secondFolder]) {
+                        groups[secondFolder] = [];
+                    }
+                    groups[secondFolder].push(line);
 
                 } catch (error) {
-                    results += `- ${file.webkitRelativePath}: Error al leer el archivo (${error.message})\n`;
+                    if (!groups[secondFolder]) {
+                        groups[secondFolder] = [];
+                    }
+                    groups[secondFolder].push(`- Error al leer archivo: ${error.message}`);
                 }
             }
         }
 
         if (matchedFilesCount === 0) {
-            results = 'No se encontraron archivos .scp válidos (o todos fueron filtrados por las excepciones).';
+            outputPre.textContent = 'No se encontraron archivos .scp válidos.';
+            lastResults = '';
+            originalResults = '';
+            return;
         }
 
-        lastResults = results;
-        outputPre.textContent = results;
+        let results = '';
+        for (const [folderName, lines] of Object.entries(groups)) {
+            results += `${folderName}\n`;
+            lines.forEach(line => {
+                results += `${line}\n`;
+            });
+            results += '\n';
+        }
+
+        originalResults = results.trim();
+        lastResults = originalResults;
+        outputPre.textContent = lastResults;
+    }
+
+    // Función para cambiar entre MAYÚSCULAS y texto normal
+    function toggleCase() {
+        if (!lastResults) {
+            alert('Primero debes procesar una carpeta.');
+            return;
+        }
+
+        const outputPre = document.getElementById('output');
+
+        if (!isUpperCase) {
+            lastResults = lastResults.toUpperCase();
+            isUpperCase = true;
+        } else {
+            lastResults = originalResults;
+            isUpperCase = false;
+        }
+
+        outputPre.textContent = lastResults;
     }
 
     function downloadResults() {
@@ -104,7 +161,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'client_files_filtrados.txt';
+        a.download = 'nombres_agrupados.txt';
         a.click();
         URL.revokeObjectURL(url);
     }
