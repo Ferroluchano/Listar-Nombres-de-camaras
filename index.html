@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extractor de Archivos .scp en "Client Files"</title>
+    <title>Extractor de Archivos .scp con Excepciones</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f4f9; }
         .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; margin-bottom: 20px; }
@@ -18,10 +18,9 @@
 <body>
 
 <div class="container">
-    <h2>Extractor de .scp en carpetas "Client Files"</h2>
+    <h2>Extractor de .scp (Con Excepciones)</h2>
     
     <label for="folderInput">**1. Selecciona la carpeta principal:**</label>
-    <!-- webkitdirectory permite seleccionar una carpeta completa -->
     <input type="file" id="folderInput" webkitdirectory directory multiple>
 
     <button onclick="processFolder()">Buscar y Procesar Archivos</button>
@@ -52,24 +51,26 @@
         const regex = /<Name>([\s\S]*?)<\/Name>/gi;
         let matchedFilesCount = 0;
 
-        // Recorrer todos los archivos dentro de la carpeta y subcarpetas seleccionadas
         for (const file of folderInput.files) {
-            // Dividir la ruta relativa en partes para verificar los nombres de las carpetas
             const pathParts = file.webkitRelativePath.split('/');
+            const lowerPath = file.webkitRelativePath.toLowerCase();
             
-            // Verificar si alguna de las carpetas en la ruta se llama exactamente "Client Files" (ignorando mayúsculas/minúsculas)
+            // Verificaciones
             const isInClientFiles = pathParts.some(part => part.toLowerCase() === 'client files');
-            // Verificar que el archivo termine en .scp (ignorando mayúsculas/minúsculas)
             const isScp = file.name.toLowerCase().endsWith('.scp');
+            
+            // Excepciones: comprueba si la ruta contiene alguna de las dos exclusiones
+            const hasGrabaciones = lowerPath.includes('grabaciones exportadas');
+            const hasCameras = lowerPath.includes('-cameras-');
 
-            if (isInClientFiles && isScp) {
+            // Solo procesa si está en "Client Files", es .scp y NO contiene ninguna de las excepciones
+            if (isInClientFiles && isScp && !hasGrabaciones && !hasCameras) {
                 matchedFilesCount++;
                 try {
                     const text = await file.text();
                     let names = [];
                     let match;
 
-                    // Extraer todos los nombres entre <Name> y </Name>
                     while ((match = regex.exec(text)) !== null) {
                         const cleanName = match[1].trim();
                         if (cleanName) {
@@ -77,7 +78,6 @@
                         }
                     }
 
-                    // Formato solicitado: Guión al inicio, nombre del archivo y los nombres separados por coma y espacio
                     const formattedNames = names.length > 0 ? names.join(', ') : '(Sin etiquetas <Name> encontradas)';
                     results += `- ${file.webkitRelativePath}: ${formattedNames}\n`;
 
@@ -88,7 +88,7 @@
         }
 
         if (matchedFilesCount === 0) {
-            results = 'No se encontraron archivos .scp dentro de ninguna carpeta llamada "Client Files".';
+            results = 'No se encontraron archivos .scp válidos (o todos fueron filtrados por las excepciones).';
         }
 
         lastResults = results;
@@ -104,7 +104,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'client_files_nombres.txt';
+        a.download = 'client_files_filtrados.txt';
         a.click();
         URL.revokeObjectURL(url);
     }
