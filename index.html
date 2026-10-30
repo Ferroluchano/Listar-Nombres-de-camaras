@@ -83,10 +83,10 @@
                     while ((match = regex.exec(text)) !== null) {
                         let cleanName = match[1].trim();
                         
-                        // Borrar automáticamente "Grabaciones Exportadas" y "-Cameras-" (insensible a mayúsculas/minúsculas)
+                        // Borrar automáticamente "Grabaciones Exportadas" y "_Cameras_" (insensible a mayúsculas/minúsculas)
                         cleanName = cleanName
                             .replace(/grabaciones exportadas/gi, '')
-                            .replace(/-cameras-/gi, '')
+                            .replace(/_cameras_/gi, '')
                             .trim();
 
                         if (cleanName) {
